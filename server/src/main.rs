@@ -18,11 +18,7 @@ async fn bootstrap(mut connection: Connection) -> Result<Connection, Box<dyn Err
     Ok(connection)
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let mut connection = Connection::open_in_memory()?;
-    connection = bootstrap(connection).await?;
-
+fn test_db(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let mut statement = connection.prepare("SELECT * FROM USERS")?;
     let users = statement
         .query_map(rusqlite::params![], |row| {
@@ -39,5 +35,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .collect::<Result<Vec<(String, String, String)>, rusqlite::Error>>()?;
     println!("{:?}", users);
 
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut connection = Connection::open_in_memory()?;
+    connection = bootstrap(connection).await?;
+    test_db(&connection)?;
     Ok(())
 }
