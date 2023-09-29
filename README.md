@@ -7,3 +7,6 @@ End to end encrypted chat
 * Probably keep the chat data in clients
 * Dockerize? Contianer orch?
 
+## todos:
+* ULID -> Loadable extention
+
