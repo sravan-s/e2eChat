@@ -59,6 +59,10 @@ async fn login_user() -> &'static str {
     "login user"
 }
 
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "nothing to see here")
+}
+
 /**
  * To do: add authentication middleware
  * To do: add database connection
@@ -82,6 +86,9 @@ pub async fn bootstrap() {
         .route("/user/:id", get(get_user).delete(delete_user))
         .route("/login", put(login_user))
         .layer(TraceLayer::new_for_http());
+
+    let app = app.fallback(handler_404);
+
     tracing::debug!("listening on localhost:3000");
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
