@@ -1,4 +1,3 @@
-@module("./logo.svg") external logo: string = "default"
 %%raw(`import './App.css'`)
 
 @react.component

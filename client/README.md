@@ -7,7 +7,6 @@
 - [vitest](https://vitest.dev/): A blazing fast unit-test framework, powered by [Vite](https://vitejs.dev) ⚡️.
   - [rescript-vitest](https://github.com/cometkim/rescript-vitest): ReScript bindings to Vitest.
   - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/): Helps you test UI components in a user-centric way.
-- [Tailwind CSS](https://tailwindcss.com): A utility-first CSS framework for rapid UI development.
 
 ## Getting Started
 
