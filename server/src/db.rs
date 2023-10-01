@@ -7,11 +7,21 @@ mod embedded {
     embed_migrations!("./migrations");
 }
 
+pub fn reset_db_file() -> Result<(), Box<dyn Error>> {
+    let rem = std::fs::remove_file("./db/__database");
+    if rem.is_ok() {
+        println!("removed old db file");
+    }
+    std::fs::File::create("./db/__database")?;
+    Ok(())
+}
+
 /**
  * Todo: import config
  */
 pub async fn bootstrap() -> Result<Connection, Box<dyn Error>> {
-    let mut connection = Connection::open("./db/v1")?;
+    reset_db_file()?;
+    let mut connection = Connection::open("./db/__database")?;
 
     println!("bootstrapping SQL");
     let connection = task::spawn_blocking(move || {

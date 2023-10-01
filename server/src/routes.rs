@@ -176,7 +176,7 @@ pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let conn: Connection = Connection::open("./db/v1").await?;
+    let conn: Connection = Connection::open("./db/__database").await?;
     let shared_state: Arc<SharedState> = Arc::new(SharedState { connection: conn });
 
     // todo: add authentication middleware
