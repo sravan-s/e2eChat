@@ -11,7 +11,7 @@ mod embedded {
  * Todo: import config
  */
 pub async fn bootstrap() -> Result<Connection, Box<dyn Error>> {
-    let mut connection = Connection::open_in_memory()?;
+    let mut connection = Connection::open("./db/v1")?;
 
     println!("bootstrapping SQL");
     let connection = task::spawn_blocking(move || {

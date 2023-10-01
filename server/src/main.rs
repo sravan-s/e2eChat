@@ -8,6 +8,6 @@ mod routes;
 async fn main() -> Result<(), Box<dyn Error>> {
     let connection: Connection = db::bootstrap().await?;
     db::test_db(&connection)?;
-    routes::bootstrap().await;
+    let _ = routes::bootstrap().await;
     Ok(())
 }
