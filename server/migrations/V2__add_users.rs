@@ -4,6 +4,9 @@ use argon2::{
 };
 use ulid::Ulid;
 
+// probbly shouldnt reuse code from `./src`
+// reason -> this is how it is done at this point in time(Oct-3-2023)
+// If in the future we change something, we add more migration script
 pub fn add_user(name: String, password: String, email: String) -> (String, String) {
     let id = Ulid::new().to_string();
 
@@ -13,6 +16,7 @@ pub fn add_user(name: String, password: String, email: String) -> (String, Strin
         .hash_password(password.clone().as_bytes(), &salt)
         .unwrap()
         .to_string();
+    // should I do transactions here?
     let user_insert = format!(
         "insert into USERS (id, name, email) values ('{}', '{}', '{}');",
         id, name, email

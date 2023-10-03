@@ -1,7 +1,10 @@
 use rusqlite::Connection;
 use std::error::Error;
 
+mod config;
 mod db;
+mod handlers;
+mod models;
 mod routes;
 
 #[tokio::main]

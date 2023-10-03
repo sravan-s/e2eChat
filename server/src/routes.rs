@@ -1,7 +1,3 @@
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHasher,
-};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -9,56 +5,20 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
-use serde::{Deserialize, Serialize};
 use std::{error::Error, sync::Arc};
 use tokio_rusqlite::Connection;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
-use ulid::Ulid;
 
-#[derive(Serialize, Deserialize)]
-struct User {
-    name: String,
-    email: String,
-}
-
-#[derive(Deserialize)]
-struct CreateUser {
-    name: String,
-    email: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-struct ErrorMessage {
-    message: String,
-}
-
-struct SharedState {
-    connection: Connection,
-}
-
-pub fn add_user(name: &String, password: &String, email: &String) -> (String, String) {
-    let id = Ulid::new().to_string();
-
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(password.clone().as_bytes(), &salt)
-        .unwrap()
-        .to_string();
-    let user_insert = format!(
-        "insert into USERS (id, name, email) values ('{}', '{}', '{}');",
-        id, name, email
-    );
-
-    let password_insert = format!(
-        "insert into PASSWORDS (userid, salt, hash) values ('{}', '{}', '{}');",
-        id, salt, password_hash,
-    );
-    (user_insert, password_insert)
-}
+use crate::{
+    config::DB_FILE,
+    models::{db::SharedState, user::User},
+};
+use crate::{
+    handlers::auth::{add_user, login_user},
+    models::{api::ErrorMessage, user::CreateUser},
+};
 
 async fn create_user(
     State(state): State<Arc<SharedState>>,
@@ -75,7 +35,8 @@ async fn create_user(
             .into_response();
     }
 
-    let (user_insert, password_insert) = add_user(&payload.name, &payload.password, &payload.email);
+    let (user_insert, password_insert, user_id) =
+        add_user(&payload.name, &payload.password, &payload.email);
     let transaction = state
         .connection
         .call(move |conn| {
@@ -83,13 +44,23 @@ async fn create_user(
             t.execute(&user_insert, [])?;
             t.execute(&password_insert, [])?;
             info!("User inserted successfully");
-            Ok(())
+            match t.commit() {
+                Ok(_) => {
+                    info!("Transaction committed successfully");
+                    Ok(())
+                }
+                Err(e) => {
+                    error!("Error committing transaction: {}", e);
+                    return Err(e);
+                }
+            }
         })
         .await;
     match transaction {
         Ok(_) => {
-            info!("User inserted successfully");
+            println!("User inserted successfully");
             let user = User {
+                id: user_id,
                 name: payload.name,
                 email: payload.email,
             };
@@ -116,6 +87,7 @@ async fn get_users(State(state): State<Arc<SharedState>>) -> Response {
             let users = stmt
                 .query_map([], |row| {
                     Ok(User {
+                        id: row.get(0)?,
                         name: row.get(1)?,
                         email: row.get(2)?,
                     })
@@ -150,10 +122,6 @@ async fn delete_user() -> &'static str {
     "update user"
 }
 
-async fn login_user() -> &'static str {
-    "login user"
-}
-
 async fn handler_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "nothing to see here")
 }
@@ -165,7 +133,6 @@ async fn handler_404() -> impl IntoResponse {
  */
 pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 // axum logs rejections from built-in extractors with the `axum::rejection`
@@ -176,7 +143,7 @@ pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let conn: Connection = Connection::open("./db/__database").await?;
+    let conn: Connection = Connection::open(DB_FILE).await?;
     let shared_state: Arc<SharedState> = Arc::new(SharedState { connection: conn });
 
     // todo: add authentication middleware

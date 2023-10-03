@@ -2,17 +2,19 @@ use rusqlite::Connection;
 use std::error::Error;
 use tokio::task;
 
+use crate::config::DB_FILE;
+
 mod embedded {
     use refinery::embed_migrations;
     embed_migrations!("./migrations");
 }
 
 pub fn reset_db_file() -> Result<(), Box<dyn Error>> {
-    let rem = std::fs::remove_file("./db/__database");
+    let rem = std::fs::remove_file(DB_FILE);
     if rem.is_ok() {
         println!("removed old db file");
     }
-    std::fs::File::create("./db/__database")?;
+    std::fs::File::create(DB_FILE)?;
     Ok(())
 }
 
@@ -21,7 +23,7 @@ pub fn reset_db_file() -> Result<(), Box<dyn Error>> {
  */
 pub async fn bootstrap() -> Result<Connection, Box<dyn Error>> {
     reset_db_file()?;
-    let mut connection = Connection::open("./db/__database")?;
+    let mut connection = Connection::open(DB_FILE)?;
 
     println!("bootstrapping SQL");
     let connection = task::spawn_blocking(move || {
