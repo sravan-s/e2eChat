@@ -24,12 +24,24 @@ async fn create_user(
     State(state): State<Arc<SharedState>>,
     Json(payload): Json<CreateUser>,
 ) -> Response {
+    // to do -> move ouside
     if payload.password.len() < 8 {
         error!("Password too short");
         return (
             StatusCode::BAD_REQUEST,
             Json(ErrorMessage {
                 message: "Password must be at least 8 characters long".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    if payload.password.len() > 64 {
+        error!("Password too long");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorMessage {
+                message: "Password must be at most 64 characters long".to_string(),
             }),
         )
             .into_response();
