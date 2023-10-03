@@ -4,6 +4,7 @@ use std::error::Error;
 mod config;
 mod db;
 mod handlers;
+mod middlewares;
 mod models;
 mod routes;
 

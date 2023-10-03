@@ -28,7 +28,7 @@ pub async fn login_user(
         .call(move |conn| {
             // get user - email(username) is case insensitive
             let mut fetch_user = conn
-                .prepare("SELECT id, name FROM USERS WHERE email = ?1 COLLATE NOCASE LIMIT 1")
+                .prepare("SELECT id, name FROM USERS WHERE email = ?1 LIMIT 1")
                 .unwrap();
 
             let mut rows = fetch_user.query([&email]).unwrap();

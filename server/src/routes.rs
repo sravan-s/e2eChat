@@ -1,12 +1,14 @@
 use axum::{
+    error_handling::HandleErrorLayer,
     extract::{Json, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post, put},
-    Router,
+    BoxError, Router,
 };
 use std::{error::Error, sync::Arc};
 use tokio_rusqlite::Connection;
+use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
