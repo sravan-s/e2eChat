@@ -1,20 +1,19 @@
 use axum::{
-    error_handling::HandleErrorLayer,
     extract::{Json, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post, put},
-    BoxError, Router,
+    Router,
 };
 use std::{error::Error, sync::Arc};
 use tokio_rusqlite::Connection;
-use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     config::DB_FILE,
+    middlewares::session::SessionManager,
     models::{db::SharedState, user::User},
 };
 use crate::{
@@ -146,6 +145,7 @@ async fn handler_404() -> impl IntoResponse {
  * To do Config file
  */
 pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
+    let session_manager = SessionManager::new();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -158,7 +158,10 @@ pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
         .init();
 
     let conn: Connection = Connection::open(DB_FILE).await?;
-    let shared_state: Arc<SharedState> = Arc::new(SharedState { connection: conn });
+    let shared_state: Arc<SharedState> = Arc::new(SharedState {
+        connection: conn,
+        session_manager,
+    });
 
     // todo: add authentication middleware
     let auth_routes = Router::new()

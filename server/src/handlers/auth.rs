@@ -6,10 +6,10 @@ use argon2::{
 };
 use axum::{
     extract::{Json, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    http::{header::SET_COOKIE, HeaderMap, HeaderValue, StatusCode},
+    response::IntoResponse,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use ulid::Ulid;
 
 use crate::models::{
@@ -21,29 +21,49 @@ use crate::models::{
 pub async fn login_user(
     State(state): State<Arc<SharedState>>,
     Json(payload): Json<LoginUser>,
-) -> Response {
+) -> impl IntoResponse {
     let email = payload.email.clone();
     let pwd = state
         .connection
         .call(move |conn| {
             // get user - email(username) is case insensitive
-            let mut fetch_user = conn
-                .prepare("SELECT id, name FROM USERS WHERE email = ?1 LIMIT 1")
-                .unwrap();
+            let (user_id, name) = match conn.query_row(
+                "SELECT id, name FROM USERS WHERE email = ?1 COLLATE NOCASE LIMIT 1",
+                [&email],
+                |row| {
+                    let user_id = row.get::<_, String>(0)?;
+                    let name = row.get::<_, String>(1)?;
+                    Ok((user_id, name))
+                },
+            ) {
+                Ok((user_id, name)) => {
+                    info!("User exist");
+                    (user_id, name)
+                }
+                Err(e) => {
+                    warn!("User {} doesnt exist", e);
+                    return Err(e);
+                }
+            };
 
-            let mut rows = fetch_user.query([&email]).unwrap();
-            let row = rows.next().unwrap().unwrap();
-            let user_id = row.get::<_, String>(0)?;
-            let name = row.get::<_, String>(1)?;
+            let hash = match conn.query_row(
+                "SELECT hash FROM PASSWORDS WHERE userid = ?1",
+                [&user_id],
+                |row| {
+                    let hash = row.get::<_, String>(0)?;
+                    Ok(hash)
+                },
+            ) {
+                Ok(hash) => {
+                    info!("Hash found for user {}", &user_id);
+                    hash
+                }
+                Err(e) => {
+                    warn!("Hash not found for user {}", &user_id);
+                    return Err(e);
+                }
+            };
 
-            // get password
-            let mut fetch_password = conn
-                .prepare("SELECT salt, hash FROM PASSWORDS WHERE userid = ?1")
-                .unwrap();
-            let mut rows = fetch_password.query([&user_id]).unwrap();
-            let row = rows.next().unwrap().unwrap();
-            // let salt = row.get::<_, String>(0)?;
-            let hash = row.get::<_, String>(1)?;
             Ok((hash, user_id, name))
         })
         .await;
@@ -57,13 +77,19 @@ pub async fn login_user(
             // password verified
             match res {
                 Ok(_) => {
+                    let mut headers = HeaderMap::new();
+                    headers.insert(SET_COOKIE, HeaderValue::from_static("yada=yada"));
+
                     info!("Password verified successfully");
-                    return Json(User {
-                        id: user_id,
-                        name,
-                        email: payload.email,
-                    })
-                    .into_response();
+                    return (
+                        headers,
+                        Json(User {
+                            id: user_id,
+                            name,
+                            email: payload.email,
+                        }),
+                    )
+                        .into_response();
                 }
                 // password incorrect
                 Err(e) => {

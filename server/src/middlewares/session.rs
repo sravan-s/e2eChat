@@ -3,7 +3,7 @@ use std::ops::Add;
 // This is to learn about session management and middleware
 //
 use chrono::{DateTime, Duration, Utc};
-use crossbeam_skiplist::SkipMap;
+use dashmap::DashMap;
 use ulid::Ulid;
 // in memory session management; is not good for production
 #[derive(Debug, Clone)]
@@ -14,13 +14,13 @@ pub struct Session {
 }
 
 pub struct SessionManager {
-    sessions: SkipMap<String, Session>, // I wanted to try something raro ~
+    sessions: DashMap<String, Session>,
 }
 
 impl SessionManager {
     pub fn new() -> SessionManager {
         SessionManager {
-            sessions: SkipMap::new(),
+            sessions: DashMap::new(),
         }
     }
 
@@ -36,12 +36,20 @@ impl SessionManager {
         id
     }
 
-    pub async fn get_session(&self, id: &String) -> Option<Session> {
+    pub async fn get_session(&mut self, id: &String) -> Option<Session> {
         let v = self.sessions.get(id);
-        if v.is_none() {
-            return None;
-        }
-        Some(v.unwrap().value().clone())
+        let session = match v {
+            Some(s) => {
+                // remove session if expired
+                if Utc::now().lt(&s.expires) {
+                    self.sessions.remove(id);
+                    return None;
+                }
+                Some(s.clone())
+            }
+            None => None,
+        };
+        session
     }
 
     pub async fn delete_session(&mut self, id: &String) {
