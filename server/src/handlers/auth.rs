@@ -8,7 +8,6 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::extract::cookie::Cookie;
-use cookie::time::{Date as CookieDate, Duration, OffsetDateTime};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use ulid::Ulid;
@@ -81,13 +80,12 @@ pub async fn login_user(
                     let mut session_manager = state.session_manager.clone();
                     let session = session_manager.add_session(user_id.clone()).await;
 
-                    // this is probably ovekill ~
-                    // todo, find way to reuse chrono::OffsetDateTime
-                    let mut expiration = OffsetDateTime::now_utc();
-                    expiration += Duration::hours(1);
-                    let mut my_cookie = Cookie::new("sambro_session_id", session.id);
-                    my_cookie.set_expires(expiration);
                     let mut headers = HeaderMap::new();
+                    let my_cookie = format!(
+                        "sambro_cookie={}; Expires={}",
+                        session.id,
+                        session.expires.to_rfc2822()
+                    );
                     let hv = HeaderValue::from_str(&my_cookie.to_string()).unwrap();
                     headers.insert(SET_COOKIE, hv);
 

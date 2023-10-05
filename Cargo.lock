@@ -1453,7 +1453,6 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
- "cookie",
  "env_logger",
  "log",
  "moka",
