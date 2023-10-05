@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
@@ -9,6 +7,9 @@ use axum::{
     http::{header::SET_COOKIE, HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
 };
+use axum_extra::extract::cookie::Cookie;
+use cookie::time::{Date as CookieDate, Duration, OffsetDateTime};
+use std::sync::Arc;
 use tracing::{error, info, warn};
 use ulid::Ulid;
 
@@ -77,9 +78,20 @@ pub async fn login_user(
             // password verified
             match res {
                 Ok(_) => {
-                    let mut headers = HeaderMap::new();
-                    headers.insert(SET_COOKIE, HeaderValue::from_static("yada=yada"));
+                    let mut session_manager = state.session_manager.clone();
+                    let session = session_manager.add_session(user_id.clone()).await;
 
+                    // this is probably ovekill ~
+                    // todo, find way to reuse chrono::OffsetDateTime
+                    let mut expiration = OffsetDateTime::now_utc();
+                    expiration += Duration::hours(1);
+                    let mut my_cookie = Cookie::new("sambro_session_id", session.id);
+                    my_cookie.set_expires(expiration);
+                    let mut headers = HeaderMap::new();
+                    let hv = HeaderValue::from_str(&my_cookie.to_string()).unwrap();
+                    headers.insert(SET_COOKIE, hv);
+
+                    // successfully logged in;
                     info!("Password verified successfully");
                     return (
                         headers,

@@ -8,10 +8,12 @@ edition = "2021"
 [dependencies]
 argon2 = "0.5.2"
 axum = "0.6.20"
+axum-extra = { version = "0.8.0", features = ["cookie"] }
 chrono = "0.4.31"
-dashmap = "5.5.3"
+cookie = "0.17.0"
 env_logger = "0.10.0"
 log = "0.4.20"
+moka = { version = "0.12.1", features = ["future"] }
 refinery = { version = "0.8.11", features = ["rusqlite"] }
 rusqlite = { version = "0.29.0", features = ["load_extension", "bundled"] }
 serde = "1.0.188"
