@@ -1,60 +1,44 @@
-use std::ops::Add;
+use std::sync::Arc;
 
-// This is to learn about session management and middleware
-//
-use chrono::{DateTime, Duration, Utc};
-use moka::future::Cache;
-use ulid::Ulid;
-// in memory session management; is not good for production
-#[derive(Debug, Clone)]
-pub struct Session {
-    pub id: String,
-    pub user_id: String,
-    pub expires: DateTime<Utc>,
-}
+use axum::{
+    extract::State,
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use axum_extra::extract::CookieJar;
 
-#[derive(Debug, Clone)]
-pub struct SessionManager {
-    pub sessions: Cache<String, Session>,
-}
+use crate::models::db::SharedState;
 
-impl SessionManager {
-    pub fn new() -> SessionManager {
-        SessionManager {
-            // meh - 10k sessions
-            sessions: Cache::new(10_000),
+pub async fn session_middleware<B>(
+    State(state): State<Arc<SharedState>>,
+    request: Request<B>,
+    next: Next<B>,
+) -> Result<Response, StatusCode> {
+    let headers = request.headers();
+    let jar = CookieJar::from_headers(headers);
+    let auth = jar.get("sambro_cookie").map(|c| c.value()).to_owned();
+    println!("Cookie");
+    let auth = match auth {
+        Some(a) => a.to_owned(),
+        None => {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    };
+
+    println!("checking session_manager");
+    let mut sm = state.session_manager.clone();
+    let check_auth_store = sm.get_session(&auth).await;
+    match check_auth_store {
+        Some(_) => {
+            println!("Login_sucess");
+            let response = next.run(request).await;
+            return Ok(response);
+        }
+        None => {
+            println!("Login failure");
+            return Err(StatusCode::UNAUTHORIZED);
         }
     }
-
-    pub async fn add_session(&mut self, user_id: String) -> Session {
-        let id = Ulid::new().to_string();
-        let session = Session {
-            id: id.clone(),
-            user_id: user_id.clone(),
-            // default session length is 1 hour
-            expires: Utc::now().add(Duration::hours(1)),
-        };
-        self.sessions.insert(id.clone(), session.clone()).await;
-        session
-    }
-
-    pub async fn get_session(&mut self, id: &String) -> Option<Session> {
-        let v = self.sessions.get(id).await;
-        let session = match v {
-            Some(s) => {
-                // remove session if expired
-                if Utc::now().lt(&s.expires) {
-                    self.sessions.remove(id);
-                    return None;
-                }
-                Some(s.clone())
-            }
-            None => None,
-        };
-        session
-    }
-
-    pub async fn delete_session(&mut self, id: &String) {
-        self.sessions.invalidate(id).await;
-    }
+    // Err(StatusCode::UNAUTHORIZED)
 }

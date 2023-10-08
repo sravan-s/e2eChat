@@ -7,7 +7,6 @@ use axum::{
     http::{header::SET_COOKIE, HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
 };
-use axum_extra::extract::cookie::Cookie;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use ulid::Ulid;

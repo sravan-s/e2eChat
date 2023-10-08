@@ -1,6 +1,6 @@
 use tokio_rusqlite::Connection;
 
-use crate::middlewares::session::SessionManager;
+use super::session::SessionManager;
 
 pub struct SharedState {
     pub connection: Connection,

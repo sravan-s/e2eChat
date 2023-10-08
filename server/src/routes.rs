@@ -1,6 +1,7 @@
 use axum::{
     extract::{Json, State},
     http::StatusCode,
+    middleware::{from_fn, from_fn_with_state},
     response::{IntoResponse, Response},
     routing::{get, post, put},
     Router,
@@ -13,8 +14,8 @@ use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::Subs
 
 use crate::{
     config::DB_FILE,
-    middlewares::session::SessionManager,
-    models::{db::SharedState, user::User},
+    middlewares::session::session_middleware,
+    models::{db::SharedState, session::SessionManager, user::User},
 };
 use crate::{
     handlers::auth::{add_user, login_user},
@@ -167,6 +168,7 @@ pub async fn bootstrap() -> Result<(), Box<dyn Error>> {
     let auth_routes = Router::new()
         .route("/user/:id", get(get_user).delete(delete_user))
         .route("/user", get(get_users))
+        .layer(from_fn_with_state(shared_state.clone(), session_middleware))
         .layer(TraceLayer::new_for_http());
 
     let open_routes = Router::new()
