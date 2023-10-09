@@ -18,7 +18,6 @@ pub async fn session_middleware<B>(
     let headers = request.headers();
     let jar = CookieJar::from_headers(headers);
     let auth = jar.get("sambro_cookie").map(|c| c.value()).to_owned();
-    println!("Cookie");
     let auth = match auth {
         Some(a) => a.to_owned(),
         None => {
@@ -31,14 +30,11 @@ pub async fn session_middleware<B>(
     let check_auth_store = sm.get_session(&auth).await;
     match check_auth_store {
         Some(_) => {
-            println!("Login_sucess");
             let response = next.run(request).await;
             return Ok(response);
         }
         None => {
-            println!("Login failure");
             return Err(StatusCode::UNAUTHORIZED);
         }
     }
-    // Err(StatusCode::UNAUTHORIZED)
 }
