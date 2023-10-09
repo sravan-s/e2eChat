@@ -7,6 +7,7 @@ use axum::{
     response::Response,
 };
 use axum_extra::extract::CookieJar;
+use tracing::{info, warn};
 
 use crate::models::db::SharedState;
 
@@ -21,19 +22,22 @@ pub async fn session_middleware<B>(
     let auth = match auth {
         Some(a) => a.to_owned(),
         None => {
+            warn!("Session_middleware: Cookie has some issue");
             return Err(StatusCode::UNAUTHORIZED);
         }
     };
 
-    println!("checking session_manager");
+    info!("checking session manager");
     let mut sm = state.session_manager.clone();
     let check_auth_store = sm.get_session(&auth).await;
     match check_auth_store {
         Some(_) => {
             let response = next.run(request).await;
+            info!("Session validated");
             return Ok(response);
         }
         None => {
+            warn!("Session invallid");
             return Err(StatusCode::UNAUTHORIZED);
         }
     }

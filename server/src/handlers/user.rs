@@ -62,7 +62,7 @@ pub async fn create_user(
         .await;
     match transaction {
         Ok(_) => {
-            println!("User inserted successfully");
+            info!("User inserted successfully");
             let user = User {
                 id: user_id,
                 name: payload.name,

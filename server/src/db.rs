@@ -36,6 +36,7 @@ pub async fn bootstrap() -> Result<Connection, Box<dyn Error>> {
 }
 
 /**
+ * This does nothing much, is to print the initialized data when application starts~
  * Todo: remove this function
  */
 pub fn test_db(connection: &Connection) -> Result<(), Box<dyn Error>> {

@@ -4,9 +4,10 @@ use argon2::{
 };
 use axum::{
     extract::{Json, State},
-    http::{header::SET_COOKIE, HeaderMap, HeaderValue, StatusCode},
+    http::{header::SET_COOKIE, HeaderMap, HeaderValue, Request, StatusCode},
     response::IntoResponse,
 };
+use axum_extra::extract::CookieJar;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use ulid::Ulid;
@@ -17,14 +18,44 @@ use crate::models::{
     user::{LoginUser, User},
 };
 
+pub async fn logout<B>(
+    State(state): State<Arc<SharedState>>,
+    request: Request<B>,
+) -> impl IntoResponse {
+    info!("trying to logout");
+    let headers = request.headers();
+    let jar = CookieJar::from_headers(headers);
+    let auth = jar.get("sambro_cookie").map(|c| c.value()).to_owned();
+    let auth = match auth {
+        Some(a) => a.to_owned(),
+        None => {
+            warn!("Logout cookie fail");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorMessage {
+                    message: "Error logging out".to_string(),
+                }),
+            )
+                .into_response();
+        }
+    };
+
+    let mut sm = state.session_manager.clone();
+    sm.delete_session(&auth).await;
+    info!("Logout success");
+    return (StatusCode::NO_CONTENT).into_response();
+}
+
 pub async fn login_user(
     State(state): State<Arc<SharedState>>,
     Json(payload): Json<LoginUser>,
 ) -> impl IntoResponse {
+    info!("Trying to login");
     let email = payload.email.clone();
     let pwd = state
         .connection
         .call(move |conn| {
+            info!("Selecting userId");
             // get user - email(username) is case insensitive
             let (user_id, name) = match conn.query_row(
                 "SELECT id, name FROM USERS WHERE email = ?1 COLLATE NOCASE LIMIT 1",
