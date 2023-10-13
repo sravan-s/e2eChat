@@ -1,21 +1,71 @@
-# Vite React ReScript Starter
+# melange-opam-template
 
-- [Vite](https://vitejs.dev): Next Generation Frontend Tooling.
-- [React](https://reactjs.org): A JavaScript library for building user interfaces.
-- [ReScript](https://rescript-lang.org): The JavaScript-like language you have been waiting for. (previously known as BuckleScript and Reason)
-  - [@jihchi/vite-plugin-rescript](https://github.com/jihchi/vite-plugin-rescript): Integrate ReScript with Vite seamlessly.
-- [vitest](https://vitest.dev/): A blazing fast unit-test framework, powered by [Vite](https://vitejs.dev) ⚡️.
-  - [rescript-vitest](https://github.com/cometkim/rescript-vitest): ReScript bindings to Vitest.
-  - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/): Helps you test UI components in a user-centric way.
+A simple project template using [Melange](https://github.com/melange-re/melange)
+with [opam](https://opam.ocaml.org/).
 
-## Getting Started
+If you are looking for a template with esy, check [melange-esy-template](https://github.com/melange-re/melange-esy-template).
 
-```sh
-npx degit jihchi/vitejs-template-react-rescript my-vitejs-react-rescript
-cd my-vitejs-react-rescript
-npm install
-npm start
+## Quick Start
+
+```shell
+make init
+
+# In separate terminals:
+make watch
+make serve
 ```
 
-Thanks - https://github.com/jihchi/vitejs-template-react-rescript
+When running `make init`, you may encounter an error like this:
 
+```
+[ERROR] Could not determine which packages to install for this switch:
+  * Missing dependency:
+    - melange >= 1.0.0
+    no matching version
+```
+
+To address this, first run `opam update`, then rerun `make init`.
+
+### React
+
+React support is provided by
+[`reason-react`](https://github.com/reasonml/reason-react/). The entry
+point of the sample React app is [`src/ReactApp.re`](src/ReactApp.re).
+
+## Commands
+
+You can see all available commands by running `make help` or just `make`. Here
+are a few of the most useful ones:
+
+- `make init`: set up opam local switch and download OCaml, Melange and
+JavaScript dependencies
+- `make install`: install OCaml, Melange and JavaScript dependencies
+- `make watch`: watch for the filesystem and have Melange rebuild on every
+change
+- `make serve`: serve the application with a local HTTP server
+
+## JavaScript output
+
+Since Melange just compiles source files into JavaScript files, it can be used
+for projects on any JavaScript platform - not just the browser.
+
+The template includes two `melange.emit` stanza for two separate apps. This
+stanza tells Dune to generate JavaScript files using Melange, and specifies in
+which folder the JavaScript files should be placed, by leveraging the `target`
+field:
+- The React app JavaScript files will be placed in `_build/default/src/output/*`.
+- The NodeJS app JavaScript files will be placed in `_build/default/src/node/*`.
+
+So for example, [`src/Hello.ml`](src/Hello.ml) (using OCaml syntax) can be run with
+`node`:
+
+```bash
+node _build/default/src/node/src/Hello.js
+```
+
+Similarly, `_build/default/src/output/src/ReactApp.js` can be passed as entry to a bundler
+like Webpack:
+
+```bash
+webpack --mode production --entry ./_build/default/src/output/src/ReactApp.js
+```
